@@ -1,0 +1,142 @@
+
+가게 상세 REST API 만들기
+GET /restaurants/{id}
+
+ex)
+{ "id":2019, "name":"식당", "address":"골목" }
+
+=====================================================================
+
+1. 가게 상세 REST API
+
+1) demo
+
+- RestaurantControllerTest
+@Test
+public void detail() throws Exception {
+    mvc.perform(get("/restaurants/1"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("\"name\":\"Bob zip")))
+            .andExpect(content().string(containsString("\"id\":1004")));
+}
+
+- RestaurantController
+@GetMapping("/restaurants/1004")
+public Restaurant detail(){
+    Restaurant restaurant = new Restaurant(1004L, "Bob zip", "seoul");
+    return restaurant;
+}
+
+----------------------------------------
+
+2) 입력 받을 변수(=id) 분리
+
+-RestaurantController
+@GetMapping("/restaurants/{id}")
+public Restaurant detail(@PathVariable("id") Long id){
+    Restaurant restaurant = new Restaurant(1004L, "Bob zip", "seoul");
+    return restaurant;
+}
+
+----------------------------------------
+
+3) id에 따른 데이터 가져오기
+
+- RestaurantControllerTest
+@Test
+public void detail() throws Exception {
+    mvc.perform(get("/restaurants/1004"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("\"name\":\"Bob zip")))
+            .andExpect(content().string(containsString("\"id\":1004")));
+
+    mvc.perform(get("/restaurants/2020"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("\"name\":\"Cyber Food\"")))
+            .andExpect(content().string(containsString("\"id\":2020")));
+}
+
+- RestaurantController
+@GetMapping("/restaurants/{id}")
+public Restaurant detail(@PathVariable("id") Long id){
+    List<Restaurant> restaurants = new ArrayList<>();
+
+    restaurants.add(new Restaurant(1004L, "Bob zip", "seoul"));
+    restaurants.add(new Restaurant(2020L, "Cyber Food", "seoul"));
+
+    return restaurants.stream().filter( restaurant -> restaurant.getId().equals(id))
+            .findFirst().get();
+}
+=> 위에서 get()으로 가져온 경우 없으면 예외가 발생한다.
+
+return restaurants.stream().filter( restaurant -> restaurant.getId().equals(id))
+    .findFirst().orElse(null);
+=> 해당 코드는 원하는 조건의 데이터가 없어도 예외가 발생하지 않는다.
+
+
+=====================================================================
+
+2. Repository를 이용한 중복된 코드 제거
+가게 상세와 가게 목록은 비슷한 코드로 이뤄졌다.
+
+Repository : 레스토랑의 collection. 저장소. 라고 부른다.
+=> domain에 속한다.
+
+1) Repository 만들기
+
+- domain.RestaurantRepository
+public class RestaurantRepository {
+    public List<Restaurant> findAll() {
+        List<Restaurant> restaurants = new ArrayList<>();
+
+        restaurants.add(new Restaurant(1004L, "Bob zip", "seoul"));
+        restaurants.add(new Restaurant(2020L, "Cyber Food", "seoul"));
+        return restaurants;
+    }
+}
+
+- RestaurantController
+private RestaurantRepository repository = new RestaurantRepository();
+
+@GetMapping("/restaurants")
+public List<Restaurant> list() {
+    List<Restaurant> restaurants = repository.findAll();
+    return restaurants;
+}
+
+----------------------------------------
+
+2) Controller와 Repository가 할 일 구분하기
+
+- RestaurantController
+@GetMapping("/restaurants/{id}")
+public Restaurant detail(@PathVariable("id") Long id){
+    Restaurant restaurant = repository.findById(id);
+    return restaurant;
+}
+
+- RestaurantRepository
+public class RestaurantRepository {
+    private List<Restaurant> restaurants = new ArrayList<>();
+
+    public RestaurantRepository(){
+        restaurants.add(new Restaurant(2020L, "Cyber Food", "seoul"));
+        restaurants.add(new Restaurant(1004L, "Bob zip", "seoul"));
+    }
+
+    public List<Restaurant> findAll() {
+        return restaurants;
+    }
+
+    public Restaurant findById(Long id) {
+        return restaurants.stream()
+                .filter(r -> r.getId().equals(id))
+                .findFirst().orElse(null);
+    }
+}
+
+코드를 작성할 때 UI layer는 사용자와 내부에 있는 로직이나 도메인 모델들이 서로
+상관 없도록 작성되어야 한다.

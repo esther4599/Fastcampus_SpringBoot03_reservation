@@ -1,0 +1,188 @@
+
+application 층 = service 파일
+
+=====================================================================
+
+1. Service 파일 만들기
+
+1) service에 대한 test 만들기
+
+- RestaurantController
+@GetMapping("/restaurants/{id}")
+public Restaurant detail(@PathVariable("id") Long id){
+    //아래 코드 변경됨
+    Restaurant restaurant = restaurantService.getRestaurantById(id);
+
+    List<MenuItem> menuItems = menuItemRepository.findAllByRestaurantId(id);
+    restaurant.setMenuItem(menuItems);
+    return restaurant;
+}
+
+- application.RestaurantService
+@Service
+public class RestaurantService {
+    public Restaurant getRestaurant(Long id) {
+        return null;
+    }
+}
+=> application에 해당하는 service들은 @Service 주석을 이용한다.
+
+- RestaurantServiceTest 만들기
+class RestaurantServiceTest {
+
+    private RestaurantService restaurantService = new RestaurantService();
+
+    @Test
+    public void getRestaurant() {
+        Restaurant restaurant = restaurantService.getRestaurant(1004L);
+
+        assertEquals(1004L, restaurant.getId());
+    }
+}
+
+--실행 결과
+현재 제대로 test가 진행되지 않는다.
+=> RestaurantService
+----------------------------------------
+
+2) restaurantService 만들기
+
+- RestaurantService
+@Service
+@NoArgsConstructor
+public class RestaurantService {
+
+    @Autowired
+    RestaurantRepository restaurantRepository;
+
+    public RestaurantService(RestaurantRepository restaurantRepository) {
+        this.restaurantRepository = restaurantRepository;
+    }
+
+    public Restaurant getRestaurant(Long id) {
+        Restaurant restaurant = restaurantRepository.findById(id);
+        return restaurant;
+    }
+}
+=> test가 spring test가 아니므로 test 수정해주기
+
+- RestaurantServiceTest
+private RestaurantService restaurantService;
+//test가 실행되기 전에 반드시 실행되는 함수
+@BeforeEach
+public void setUp(){
+    RestaurantRepository restaurantRepository = new RestaurantRepositoryImpl();
+    restaurantService = new RestaurantService(restaurantRepository);
+}
+
+----------------------------------------
+
+3) Controller에서 service만 사용해 기능 구현하도록 코드 수정하기.
+
+-RestaurantController
+@RestController
+public class RestaurantController {
+
+    @Autowired
+    private RestaurantService restaurantService;
+
+    @GetMapping("/restaurants")
+    public List<Restaurant> list() {
+        //service 이용하도록 코드 변경
+        List<Restaurant> restaurants = restaurantService.getRestaurants();
+        return restaurants;
+    }
+
+    @GetMapping("/restaurants/{id}")
+    public Restaurant detail(@PathVariable("id") Long id){
+        Restaurant restaurant = restaurantService.getRestaurant(id);
+
+        return restaurant;
+    }
+}
+
+-RestaurantService : getRestaurants 작성
+@Service
+@NoArgsConstructor
+public class RestaurantService {
+
+    @Autowired
+    RestaurantRepository restaurantRepository;
+
+    public RestaurantService(RestaurantRepository restaurantRepository) {
+        this.restaurantRepository = restaurantRepository;
+    }
+
+    public Restaurant getRestaurant(Long id) {
+        Restaurant restaurant = restaurantRepository.findById(id);
+        return restaurant;
+    }
+
+    public List<Restaurant> getRestaurants() {
+        List<Restaurant> restaurants = restaurantRepository.findAll();
+        return restaurants;
+    }
+}
+
+-RestaurantServiceTest : getRestaurants 테스트
+@Test
+public void getRestaurants(){
+    List<Restaurant> restaurants = restaurantService.getRestaurants();
+
+    Restaurant restaurant = restaurants.get(0);
+    assertEquals(1004L, restaurant.getId());
+}
+
+----------------------------------------
+
+4) ControllerTest 수정
+=> 기존에 작성해둔 test는 제대로 실행되지 않는다.
+
+- RestaurantControllerTest : RestaurantService 추가
+@SpyBean(RestaurantService.class)
+private RestaurantService restaurantService;
+==> detail에서 에러 발생 : "menuItems":[]로 MockHttpServletResponse가 만들어진다.
+
+- RestaurantServiceTest : menuItem 내용 확인하는 test 추가
+@Test
+public void getRestaurant() {
+    Restaurant restaurant = restaurantService.getRestaurant(1004L);
+
+    assertEquals(1004L, restaurant.getId());
+
+    MenuItem menuItem = restaurant.getMenuItems().get(0);
+    assertEquals("Kimchi", menuItem.getName());
+}
+
+- RestaurantService : menuItem 정보 입력하는 기능 추가
+@Autowired
+private MenuItemRepository menuItemRepository;
+public Restaurant getRestaurant(Long id) {
+    Restaurant restaurant = restaurantRepository.findById(id);
+
+    List<MenuItem> menuItems = menuItemRepository.findAllByRestaurantId(id);
+    restaurant.setMenuItem(menuItems);
+
+    return restaurant;
+}
+
+- RestaurantServiceTest
+private MenuItemRepository menuItemRepository;
+@BeforeEach
+public void setUp(){
+    restaurantRepository = new RestaurantRepositoryImpl();
+    menuItemRepository = new MenuItemRepositoryImpl();
+
+    restaurantService = new RestaurantService(restaurantRepository, menuItemRepository);
+}
+
+- RestaurantService : test에 맞게 생성자 수정. menuItemRepository를 받아 저장.
+public RestaurantService(RestaurantRepository restaurantRepository, MenuItemRepository menuItemRepository) {
+    this.restaurantRepository = restaurantRepository;
+    this.menuItemRepository = menuItemRepository;
+}
+
+=====================================================================
+
+controller는 웹에 대한 기능에만 집중할 수 있도록
+application은 해당 프로젝트의 기능이 제대로 구현되도록 코드를 작성하자.

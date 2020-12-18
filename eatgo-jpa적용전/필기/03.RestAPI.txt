@@ -1,0 +1,74 @@
+
+다양한 환경?
+웹, 모바일 등의 환경
+
+서로 다른 다양한 환경을 지원하려면?
+서로 다른 front-end를 통해 다양한 환경을 제공한다.
+
+그럼 각 환경에서 실행될 공통 업무는?? = 하나의 back end
+REST API를 사용해 기능을 제공한다.
+
+REST API??
+REpresentational State Transfer = 표현상태를 전달하는 것을 의미한다.
+= resource를 처리하는 것을 의미한다.
+
+resource를 처리??
+크게 4가지 방식이 있다.
+rest api : http api
+create : post
+read : get
+update : put/patch
+delete : delete
+
+resource 지정??
+URI(Uniform Resource Identifier)이나 URL(Uniform Resource Locator)라는
+지시자를 사용해 resource를 지정한다.
+
+resource 분류??
+1. Collection : 여러 개의 데이터가 함께 있는 것
+2. Member : 속한 개별적인 resource
+
+collection
+read -> list를 가져온다.
+create -> 새로운 리소스를 만든다.
+
+member
+read(detail) -> 목록이 아닌 각 개별 정보
+update -> 리소스 수정
+delete -> 삭제
+
+============================================================
+
+- 프로젝트에 적용하기
+
+Collection : http://host/restaurant
+
+Member 가져오기 : http://host/restaurant/1
+=> 위에서 1은 개별 resource의 id를 의미하게 된다.
+
+JSON : JavaScript Object Notation
+=> 요청이나 응답에서 데이터를 주고 받는 형식
+개별 데이터 : {'id':'kill', 'name':'this'}
+List : [{'id':'kill', 'name':'this'},{'id':'love', 'name':'blackpink'}]
+
+============================================================
+
+사용할 APIs 정의하기
+
+1. 가게 목록
+GET /restaurant
+
+2. 가게 상세
+GET /restaurant/1 = /restaurant/{id}
+
+3. 가게 추가
+POST /restaurants
+
+4. 가게 수정
+PATCH /restaurants/{id}
+
+5. 가게 삭제
+Delete /restaurants/{id}
+
+==> /restaurant에 접근하는 방법을 아는 것이 중요하다.
+

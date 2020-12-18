@@ -1,0 +1,200 @@
+
+가게 추가
+=> POST 메소드 이용 / restaurants 객체 생성
+기존에는 http status 200을 돌려줬음.
+여기서는 생성이 성공됨을 의미하는 201을 돌려줄 예정이다.
+
+생성된 restaurant에 대한 정보를 Header에 담아서 보내준다. => Header Location
+
+client에서 백엔드에서 보내 준 결과를 json (JavaScript Object Notation)
+(네트워크를 통해 데이터를 주고 받는데 자주 사용되는 경량의 데이터 형식) parser가 돌아가게 작성할 수 있다.
+이때 아무것도 없는 경우 {}만 있는 Empty objest를 돌려준다.
+
+어떻게 위의 내용대로 돌아가고 있는지를 확인할까?
+HTTPie를 이용한다. 이를 이용해 post 내용을 확인할 예정이다.
+
+UI Layer(=Controller) / Application Layer(=Service)를 분리해서 작업을 시작한다.
+Controller : create 하는 작업 추가
+Service : restaurant을 추가하는 코드 작성
+
+=====================================================================
+
+1. HTTPie 사용
+
+1) 설치
+terminal에서 진행
+pip 설치 (python3 -m pip install matplotlib) (pip 안에 HTTPie가 존재한다.)
+-> HTTPie (python3 -m pip install --upgrade pip setuptools / python3 -m pip install --upgrade httpie )
+
+----------------------------------------
+
+2) 실행
+
+**먼저 server 실행
+
+- terminal에서 http GET localhost:8080 실행
+-- 실행 결과
+HTTP/1.1 200
+Connection: keep-alive
+Content-Length: 14
+Content-Type: text/plain;charset=UTF-8
+Date: Wed, 16 Dec 2020 12:57:45 GMT
+Keep-Alive: timeout=60
+
+Hello, world!!
+
+- terminal에서 http GET localhost:8080/restaurants 실행
+-- 실행 결과
+HTTP/1.1 200
+Connection: keep-alive
+Content-Type: application/json
+Date: Wed, 16 Dec 2020 12:59:38 GMT
+Keep-Alive: timeout=60
+Transfer-Encoding: chunked
+
+[
+    {
+        "address": "seoul",
+        "id": 1004,
+        "information": "Bob zip in seoul",
+        "menuItems": [],
+        "name": "Bob zip"
+    },
+    {
+        "address": "seoul",
+        "id": 2020,
+        "information": "Cyber Food in seoul",
+        "menuItems": [],
+        "name": "Cyber Food"
+    }
+]
+
+- terminal에서 http GET localhost:8080/restaurants/1004
+-- 실행 결과
+HTTP/1.1 200
+Connection: keep-alive
+Content-Type: application/json
+Date: Wed, 16 Dec 2020 13:14:37 GMT
+Keep-Alive: timeout=60
+Transfer-Encoding: chunked
+
+{
+    "address": "seoul",
+    "id": 1004,
+    "information": "Bob zip in seoul",
+    "menuItems": [
+        {
+            "name": "Kimchi"
+        }
+    ],
+    "name": "Bob zip"
+}
+
+** 이번 강의에서 해결할 문제
+- http POST localhost:8080/restaurants name=BeRyong address="Busan"
+-- 실행 결과
+"error": "Method Not Allowed",
+"message": "Request method 'POST' not supported"
+=> post를 하는 코드 작성하기
+
+=====================================================================
+
+2. RestaurantController
+
+1) PostMapping 적용
+
+- RestaurantControllerTest
+@Test
+public void create() throws Exception {
+    mvc.perform(post("/restaurants"))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("location", "/restaurants/1234"))
+            .andExpect(content().string("{}"));
+}
+
+- RestaurantController
+@PostMapping("/restaurants")
+public ResponseEntity<?> create() throws URISyntaxException {
+    URI location = new URI("/restaurants/1234");
+    return ResponseEntity.created(location).body("{}");
+}
+==> ResponseEntity -> 응답 작성하기.
+
+-- 결과
+현재 위의 코드는 제대로 작동하는 코드가 아니다. 어떠한 데이터도 생성되지 않는 상태이다.
+
+----------------------------------------
+
+2) restaurant 생성하는 코드 추가하기
+
+- RestaurantControllerTest
+public void create() throws Exception {
+    mvc.perform(post("/restaurants"))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("location", "/restaurants/1234"))
+            .andExpect(content().string("{}"));
+
+    verify(restaurantService).addRestaurant(any());
+}
+==> 전에 작성한 Mock 에서는 뭔가를 return 하는 것이 중심이었다면 여기서는 실행하는 것이 중심이다.
+==> verify에서 객체를 만들어서 입력하지 않고 any()라고 작성한 이유? 해당 검사에서 현재 만들어진 객체가 입력된건지 주소를 통해 확인하기 때문이다.
+
+- RestaurantService
+public void addRestaurant(Restaurant restaurant) {
+}
+
+- RestaurantController
+@PostMapping("/restaurants")
+public ResponseEntity<?> create() throws URISyntaxException {
+    Restaurant restaurant = new Restaurant(1234L, "BeRyong", "Busan");
+    restaurantService.addRestaurant(restaurant);
+
+    URI location = new URI("/restaurants/1234");
+    return ResponseEntity.created(location).body("{}");
+}
+
+----------------------------------------
+
+3) json 형식으로 request 넘기기
+
+- RestaurantControllerTest
+public void create() throws Exception {
+    mvc.perform(post("/restaurants")
+            .contentType(MediaType.APPLICATION_JSON_UTF8)
+            .content("{\"name\":\"BeRyong\",\"address\":\"Busan\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("location", "/restaurants/1234"))
+            .andExpect(content().string("{}"));
+
+    verify(restaurantService).addRestaurant(any());
+}
+==> 위 코드에서 content로 넘겨준 내용을 Controller에서 받아서 처리하게 코드로 작성
+
+- RestaurantController
+@PostMapping("/restaurants") //domain을 아래와 같이 응답을 받는 객체로 사용하는 건 좋지 않다. todo 수정 필요
+public ResponseEntity<?> create(@RequestBody Restaurant resource) throws URISyntaxException {
+    String name = resource.getName();
+    String address = resource.getAddress();
+
+    Restaurant restaurant = new Restaurant(1234L, name, address);
+    restaurantService.addRestaurant(restaurant);
+
+    URI location = new URI("/restaurants/"+restaurant.getId());
+    return ResponseEntity.created(location).body("{}");
+}
+
+- Restaurant
+@NoArgsConstructor
+=> 위에서 매개변수로 Restaurant를 받아올 때 꼭 필요하다.
+=> final 키워드 모두 지우기
+
+--http POST localhost:8080/restaurants name=BeRyong address=Busan 실행 결과
+HTTP/1.1 201
+Connection: keep-alive
+Content-Length: 2
+Content-Type: application/json
+Date: Fri, 18 Dec 2020 07:35:23 GMT
+Keep-Alive: timeout=60
+Location: /restaurants/1234
+{}
+ ==> 실제로 저장한 상태는 아니라 get을 이용해 모든 restaurant을 검색하면 생성한 객체가 출력되지는 않는다.

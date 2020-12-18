@@ -1,0 +1,37 @@
+현재 프로젝트는 프로젝트 내에 하나의 프로젝트만 있지만 보통 하나의 프로젝트 안에
+다양한 프로젝트들이 들어가 있다.
+
+* 프로젝트 시작하고
+
+1.다중 프로젝트 형식으로 변경하기
+
+1) root에 eatgo-api 폴더 만들기
+
+2) eatdo-api 폴더에 src와 build.gradle 옮기기
+
+3) setting.gradle에 아래의 코드를 추가한다.
+include 'eatgo-api'
+
+=======================================================
+
+2. shift 2번 누르기 => 원하는 파일 검색
+
+=======================================================
+
+3. hello world
+localhost:8080d에 접속했을 때 helloWorld가 뜨는 page 만들기
+
+1) interface 라는 패키지 만들기
+
+2) interface에 welcomeController 만들기
+@RestController
+public class WelcomeController {
+
+    @GetMapping("/")
+    public String hello() {
+        return "Hello, world!!";
+    }
+}
+
+--실행 결과 : http://localhost:8080/ 입력 시
+Hello, world!!

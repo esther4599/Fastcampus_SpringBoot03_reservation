@@ -1,0 +1,68 @@
+
+Dependency Injection : 의존성 주입
+=> @AutoWeird
+
+의존성??
+= 의존 관계를 의미한다. 2 이상의 객체가 서로 협력하는 방법을 의미한다.
+ex)
+A 객체, B 객체
+A가 B에 의존할 경우 = A가 B를 사용한다.
+이는 기술적으로 문제가 있다. B의 변화가 A에 영향을 끼치는 것이다.
+=> 관리 필요
+
+ex)
+Controller는 Repository에 의존한다.
+Controller에서 Repository를 직접 생성하기 보다는 Spring IoC Controller를 이용해
+이를 관리하는 것이 좋다.
+
+Spring은 @Component, @Autowired를 제공한다.
+
+이를 통해 객체간 강한 연관성을 낮출 수 있다.
+코드를 간단하게 작성할 수 있다.
+
+=====================================================================
+
+1. 의존성 주입하기
+
+1) 의존성 주입
+
+- RestaurantRepository
+@Component 주석을 붙여 Spring이 해당 객체를 관리할 수 있도록 한다.
+
+- RestaurantController
+@Autowired
+private RestaurantRepository repository;
+
+=> main은 잘 작동하지만 test에서 오류가 발생한다.
+== WebMvcTest로는 제대로 된 저장소를 사용할 수 없기 때문이다.
+
+----------------------------------------
+
+2) test 에러 해결
+@SpyBean 주석을 이용한다.
+원하는 객체를 주입할 수 있다.
+
+=====================================================================
+
+2. 의존성 주입의 장점
+우리가 사용하고자 하는 객체를 다양하게 변경할 수 있다.
+=> repository inteface를 만들고 구체적인 내용은 class가 갖고 있도록 구현하자.
+
+1) interface, class 분리
+
+- RestaurantRepository => RestaurantRepositoryImpl
+
+- RestaurantRepository
+public interface RestaurantRepository {
+    List<Restaurant> findAll();
+
+    Restaurant findById(Long id);
+}
+
+=> RestaurantRepository에서 우클릭 refactor -> extract interface 이용해서 작성
+=> findAll, findById를 인터페이스로 분리
+
+main : 원래 구현체(RestaurantRepositoryImpl)를 사용하던 코드를 RestaurantRepository를
+사용하도록 변경한다.
+
+test : 구현체(RestaurantRepositoryImpl)를 @SpyBean하게 작성한다.

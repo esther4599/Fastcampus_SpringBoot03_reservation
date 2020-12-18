@@ -1,0 +1,61 @@
+
+1. TDD : Test Driven Development = 목표 주도 개발, 사용자 중심 개발, 인터페이스 중심 개발
+    => 목표 : 올바르게 작동하는 깔끔한 코드 작성
+
+test code를 통해 기능이 제래도 작동하는지 확인하고
+기능이 제대로 작동할 경우 코드를 Refactoring하여 성능을 높인다.
+TDD의 경우 test first = 테스트 코드를 먼저 작성하자는 것이 핵심 아이디어이다.
+
+아래의 3가지 과정을 거쳐 실행하게 된다.
+1) Red : 실패하는 test. 코드를 작성하지 않고 test를 먼저 작성하면 오류가 발생한다.
+2) Green : 원하는 코드를 작성해 test가 성공하도록 한다.
+3) Refactoring : 리팩토링을 통해 코드의 효율성을 높인다.
+
+===================================================================
+
+2. Restaurant : name
+
+1) domain.Restaurant 만들기
+public class Restaurant {
+    private String name;
+
+    public Restaurant(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+
+2) 바로 RestaurantTest 만들기
+class RestaurantTests {
+
+    @Test
+    public void creation(){
+        Restaurant restaurant = new Restaurant("Bob zip");
+        Assertions.assertEquals("Bob zip", restaurant.getName());
+    }
+}
+
+--------------------------------------
+
+2. Restaurant : address
+
+1) domain.Restaurant
+
+private String address;
+public String getAddress(){
+    return address;
+}
+public String getInformation() {
+    return name + " in " + address;
+}
+
+2) RestaurantTest
+@Test
+public void information() {
+    Restaurant restaurant = new Restaurant("Bob zip", "Seoul");
+
+    Assertions.assertEquals("Bob zip in Seoul", restaurant.getInformation());
+}

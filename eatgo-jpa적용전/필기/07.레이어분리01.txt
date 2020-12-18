@@ -1,0 +1,126 @@
+
+Layered Architecture??
+
+현재 우리가 작성한 Layer
+UI Layer => Controller
+Domain Layer => Restaurant, Repository
+
+interface package => controller
+domain package => restaurant, repository
+
+원래 계획했던 Layer
+1. UI Layer
+2. Application Layer
+3. Domain Layer
+
+application Layer?
+=> 오늘 강의에서 추가할 내용
+application package 만들기
+=> menu, item domain이 추가될 예정 = 더 복잡한 로직을 갖는다.
+
+application package에 Restaurant Service class를 추가해 복잡한 로직을 처리할 예정이다.
+
+=====================================================================
+
+1. Menu 기능 추가
+
+1) test 작성 + 객체 생성
+
+- RestaurantControllerTest
+public void detail() throws Exception {
+    mvc.perform(get("/restaurants/1004"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("\"name\":\"Bob zip")))
+            .andExpect(content().string(containsString("\"id\":1004")))
+            //추가한 코드
+            .andExpect(content().string(containsString("Kimchi")));
+
+    mvc.perform(get("/restaurants/2020"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("\"name\":\"Cyber Food\"")))
+            .andExpect(content().string(containsString("\"id\":2020")));
+}
+
+- RestaurantController
+@GetMapping("/restaurants/{id}")
+public Restaurant detail(@PathVariable("id") Long id){
+    Restaurant restaurant = repository.findById(id);
+
+    restaurant.addMenuItem(new MenuItem("Kimchi"));
+    return restaurant;
+}
+
+- domain.MenuItem
+public class MenuItem {
+    private String name;
+
+    public MenuItem(String name){
+        this.name = name;
+    }
+
+    public String getName(){
+        return name;
+    }
+}
+
+- Restaurant
+private List<MenuItem> menuItems = new ArrayList<MenuItem>();
+
+public List<MenuItem> getMenuItems(){
+    return menuItems;
+}
+
+public void addMenuItem(MenuItem menuItem) {
+    menuItems.add(menuItem);
+}
+
+----------------------------------------
+
+2) repository를 하나 더 만들어서 진행하기
+
+- RestaurantController
+@Autowired
+private MenuItemRepository menuItemRepository;
+
+public Restaurant detail(@PathVariable("id") Long id){
+    Restaurant restaurant = restaurantRepository.findById(id);
+
+    List<MenuItem> menuItems = menuItemRepository.findAllByRestaurantId(id);
+    restaurant.setMenuItem(menuItems);
+    return restaurant;
+}
+
+- Restaurant
+public void setMenuItem(List<MenuItem> menuItems) {
+    for (MenuItem menuItem : menuItems){
+        addMenuItem(menuItem);
+    }
+}
+
+-domain.MenuItemRepository
+public interface MenuItemRepository {
+    List<MenuItem> findAllByRestaurantId(Long restaurantId);
+}
+
+-domain.MenuItemRepositoryImpl@Component
+public class MenuItemRepositoryImpl implements MenuItemRepository {
+  private List<MenuItem> menuItems = new ArrayList<>();
+
+  public MenuItemRepositoryImpl(){
+      menuItems.add(new MenuItem("Kimchi"));
+  }
+
+  @Override
+  public List<MenuItem> findAllByRestaurantId(Long restaurantId) {
+      return menuItems;
+  }
+}
+
+- RestaurantControllerTest
+@SpyBean(RestaurantRepositoryImpl.class)
+private RestaurantRepository restaurantRepository;
+
+@SpyBean(MenuItemRepositoryImpl.class)
+private MenuItemRepository menuItemRepository;

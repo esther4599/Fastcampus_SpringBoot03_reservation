@@ -1,0 +1,150 @@
+저번 시간에 가게 추가 API = controller만 먼저 작성
+
+service = application layer
+repository = domain layer
+
+service의 addRestaurant에서 추가할 기능
+1.addRestaurant 시 만든 객체를 얻는다.
+2.자동으로 id 할당
+
+=====================================================================
+
+1. Service
+지난 시간에 작성한 코드 확인하기
+controller
+=> restaurantService.addRestaurant(restaurant);
+여기서 service의 메소드를 실행
+
+1) id를 입력 안해도 알아서 id를 입력해주는 형식으로 틀 잡기
+
+- RestaurantServiceTest
+@Test
+public void addRestaurant(){
+    Restaurant restaurant = new Restaurant("BeRyong", "Busan");
+    Restaurant created = restaurantService.addRestaurant(restaurant);
+
+    assertThat(created.getId()).isEqualTo(1234L);
+}
+
+- Restaurant => command + shift + 위에 화살표 = 메소드를 위로 올린다.
+public Restaurant(String name, String address) {
+    this.name = name;
+    this.address = address;
+}
+
+- RestaurantService
+public Restaurant addRestaurant(Restaurant restaurant) {
+    restaurant.setId(1234L);
+    return restaurant;
+}
+
+- Restaurant
+public void setId(long id) {
+    this.id = id;
+}
+
+----------------------------------------
+
+2) repository에서 save() 메소드 틀 만들기
+
+- RestaurantServiceTest
+@Test
+public void addRestaurant(){
+    Restaurant restaurant = new Restaurant("BeRyong", "Busan");
+
+    Restaurant saved = new Restaurant(1234L, restaurant.getName(), restaurant.getAddress());
+    given(restaurantRepository.save(any())).willReturn(saved);
+
+    Restaurant created = restaurantService.addRestaurant(restaurant);
+
+    assertThat(created.getId()).isEqualTo(1234L);
+}
+=> repository를 테스트하기 위해서 코드가 조금은 난잡한 상태이다.
+
+- RestaurantRepository
+Restaurant save(Restaurant restaurant);
+
+- RestaurantRepositoryImpl
+@Override
+public Restaurant save(Restaurant restaurant) {
+    return null;
+}
+
+----------------------------------------
+
+3) repository에서 객체를 저장하고 id를 지정하도록 코드 작성
+
+- RestaurantService
+public Restaurant addRestaurant(Restaurant restaurant) {
+    return restaurantRepository.save(restaurant);
+}
+
+- RestaurantRepositoryImplTest
+@Test
+public void save() {
+    RestaurantRepository repository = new RestaurantRepositoryImpl();
+
+    int oldCount = repository.findAll().size();
+
+    Restaurant restaurant = new Restaurant("BeRyong","Busan");
+    repository.save(restaurant);
+
+    assertThat(restaurant.getId()).isEqualTo(1234L);
+
+    int newCount = repository.findAll().size();
+
+    assertThat(newCount - oldCount).isEqualTo(1);
+}
+
+- RestaurantRepositoryImpl
+@Override
+public Restaurant save(Restaurant restaurant) {
+    restaurant.setId(1234L);
+    restaurants.add(restaurant);
+    return restaurant;
+}
+
+-- http POST localhost:8080/restaurants name=BeRyong address=Busan 실행
+   HTTP/1.1 201
+   Connection: keep-alive
+   Content-Length: 2
+   Content-Type: application/json
+   Date: Fri, 18 Dec 2020 08:47:13 GMT
+   Keep-Alive: timeout=60
+   Location: /restaurants/1234
+
+   {}
+
+
+-- http GET localhost:8080/restaurants 실행
+   HTTP/1.1 200
+   Connection: keep-alive
+   Content-Type: application/json
+   Date: Fri, 18 Dec 2020 08:47:18 GMT
+   Keep-Alive: timeout=60
+   Transfer-Encoding: chunked
+
+   [
+       {
+           "address": "seoul",
+           "id": 1004,
+           "information": "Bob zip in seoul",
+           "menuItems": [],
+           "name": "Bob zip"
+       },
+       {
+           "address": "seoul",
+           "id": 2020,
+           "information": "Cyber Food in seoul",
+           "menuItems": [],
+           "name": "Cyber Food"
+       },
+       {
+           "address": "Busan",
+           "id": 1234,
+           "information": "BeRyong in Busan",
+           "menuItems": [],
+           "name": "BeRyong"
+       }
+   ]
+

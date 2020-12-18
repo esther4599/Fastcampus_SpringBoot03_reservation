@@ -1,0 +1,122 @@
+
+현재 테스트에서 아래와 같은 코드들을 작성해 사용하고 있다.
+@SpyBean(RestaurantService.class)
+private RestaurantService restaurantService;
+
+@SpyBean(RestaurantRepositoryImpl.class)
+private RestaurantRepository restaurantRepository;
+
+@SpyBean(MenuItemRepositoryImpl.class)
+private MenuItemRepository menuItemRepository;
+
+테스트하고자 하는 객체 이외의 객체를 많이 사용하고 있어서 발생하는 문제
+의존성을 하나하나 다 작성해주어야 했다.
+
+MockObject를 이용해 이를 해결해보자.
+
+**MockObject = 가짜 객체
+**Mockito를 이용해 MockObject를 만들어 사용할 수 있다.
+
+**Spring Test
+=> Spring을 통해 test를 실행함. 더 많은 시간이 필요하다.
+
+**POJO = Plain Old Java Object
+정통적인 자바 오브젝트 사용을 권장한다. ex) Mockito
+
+=====================================================================
+
+1.RestaurantControllerTest : Mock 적용하기
+
+1) Mock 객체로 변경하기
+
+- RestaurantControllerTest
+@MockBean
+private RestaurantService restaurantService;
+=> 해당 객체를 사용하기 위해 사용하던 repository는 삭제하기
+
+-- 실행 결과
+실패한다. 그러나 객체를 찾을 수 없다는 에러가 아닌 내용이 일치하지 않는다는 오류가 발생한다.
+
+----------------------------------------
+
+2) test가 정상 작동되도록 수정하기
+
+- RestaurantControllerTest : list(). Mockito를 이용해 Mock 객체 기능 구현.
+@Test
+public void list() throws Exception {
+    List<Restaurant> retaurants = new ArrayList<>();
+    retaurants.add(new Restaurant(1004L, "Bob zip", "Seoul"));
+    given(restaurantService.getRestaurants()).willReturn(retaurants);
+
+    mvc.perform(get("/restaurants"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    //contents는 json 형식으로 아래와 같이 입력되므로 test 확인을 아래와 같이 진행한다.
+                    containsString("\"name\":\"Bob zip")))
+            .andExpect(content().string(containsString("\"id\":1004")));
+}
+=> 각 테스트는 테스트를 진행하는 객체에 초점이 맞춰져 있는 게 중요하다.
+   테스트를 진행하는 객체 외 다른 객체의 기능은 위와 같이 작성해 test를 하는 것이 좋다.
+
+- RestaurantControllerTest : detail() Mockito 적용
+@Test
+public void detail() throws Exception {
+    Restaurant restaurant1 = new Restaurant(1004L, "JOKER House", "Seoul");
+    restaurant1.addMenuItem(new MenuItem("Kimchi"));
+    given(restaurantService.getRestaurant(1004L)).willReturn(restaurant1);
+
+    Restaurant restaurant2 = new Restaurant(2020L, "Cyber Food", "Seoul");
+    given(restaurantService.getRestaurant(2020L)).willReturn(restaurant2);
+
+    mvc.perform(get("/restaurants/1004"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("\"name\":\"JOKER House")))
+            .andExpect(content().string(containsString("\"id\":1004")))
+            .andExpect(content().string(containsString("Kimchi")));
+
+    mvc.perform(get("/restaurants/2020"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    containsString("\"name\":\"Cyber Food\"")))
+            .andExpect(content().string(containsString("\"id\":2020")));
+}
+
+=====================================================================
+
+2. RestaurantServiceTest
+
+1) Mock 객체로 변경하기
+
+- RestaurantServiceTest
+@Mock
+private RestaurantRepository restaurantRepository;
+
+@Mock
+private MenuItemRepository menuItemRepository;
+
+@BeforeEach
+public void setUp(){
+    //아래의 코드는 현재 test 객체에 있는 Mock 중 @Annotation이 있는 객체를 초기화하도록 한다.
+    MockitoAnnotations.initMocks(this);
+
+    mockRestaurantRepository();
+    mockMenuItemRepository();
+
+    restaurantService = new RestaurantService(restaurantRepository, menuItemRepository);
+}
+
+private void mockRestaurantRepository() {
+    List<Restaurant> restaurants = new ArrayList<>();
+    Restaurant restaurant = new Restaurant(1004L, "Bob zip", "Seoul");
+    restaurants.add(restaurant);
+    given(restaurantRepository.findAll()).willReturn(restaurants);
+    given(restaurantRepository.findById(1004L)).willReturn(restaurant);
+}
+
+private void mockMenuItemRepository() {
+    List<MenuItem> menuItems = new ArrayList<>();
+    menuItems.add(new MenuItem("Kimchi"));
+    given(menuItemRepository.findAllByRestaurantId(1004L)).willReturn(menuItems);
+}
+

@@ -1,0 +1,65 @@
+
+가게 목록 REST API 만들기
+GET /restaurants
+
+ex)
+[ {'id':2001, 'name':'오디세이', 'address':'우주'},
+  {'id':2019, 'name':'식당', 'address':'골목} ]
+
+============================================================
+
+1. demo
+
+1) URL 요청이 왔을 때 처리하는 컨트롤러 만들기 ex) welcome controller
+
+- interfaces.RestaurantController
+@GetMapping("/restaurants")
+public List<Restaurant> list() {
+    List<Restaurant> restaurants = new ArrayList<>();
+    return restaurants;
+}
+
+- RestaurantControllerTest
+@Autowired
+private MockMvc mvc;
+
+@Test
+public void list() throws Exception {
+    mvc.perform(get("/restaurant"))
+    .andExpect(status().isOk());
+}
+
+----------------------------------------------
+
+2) id, name 확인하는 test 만들기
+
+-RestaurantTest
+//생성자에 아래와 같이 1004 추가
+Restaurant restaurant = new Restaurant(1004, "Bob zip", "Seoul");
+//검증에도 아래와 같은 코드 추가
+Assertions.assertEquals(1004L, restaurant.getId());
+
+-Restaurant
+private final Long id;
+public Restaurant(Long id, String name, String address)로 변경
+public Long getId() { return id; }
+
+- RestaurantControllerTest
+@Test
+public void list() throws Exception {
+    mvc.perform(get("/restaurants"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(
+                    //contents는 json 형식으로 아래와 같이 입력되므로 test 확인을 아래와 같이 진행한다.
+                    containsString("\"name\":\"Bob zip")))
+            .andExpect(content().string(containsString("\"id\":1004")));
+}
+
+-RestaurantController
+Restaurant restaurant = new Restaurant(1004L, "Bob zip", "seoul");
+
+----------------------------------------------
+
+3) 확인
+localhost:8080 => hello world!!
+http://localhost:8080/restaurants => [{"id":1004,"name":"Bob zip","address":"seoul","information":"Bob zip in seoul"}]
